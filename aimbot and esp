@@ -1,0 +1,163 @@
+-- aimbot and esp both are ugly 
+
+
+local UIS = game:GetService("UserInputService")
+
+-- UI Components
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local ESPButton = Instance.new("TextButton")
+local InfJumpButton = Instance.new("TextButton")
+local AimbotButton = Instance.new("TextButton")
+
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.new(1, 0.75, 0.8) -- Pink Menu
+Frame.Position = UDim2.new(0, 50, 0, 50)
+Frame.Size = UDim2.new(0, 500, 0, 500)
+
+-- Dragging functionality for the frame
+local dragging, dragStart, startPos
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+    end
+end)
+
+Frame.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+Frame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+ESPButton.Parent = Frame
+ESPButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+ESPButton.Position = UDim2.new(0, 10, 0, 10)
+ESPButton.Size = UDim2.new(0, 480, 0, 40)
+ESPButton.Text = "ESP"
+
+InfJumpButton.Parent = Frame
+InfJumpButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+InfJumpButton.Position = UDim2.new(0, 10, 0, 60)
+InfJumpButton.Size = UDim2.new(0, 480, 0, 40)
+InfJumpButton.Text = "Infinite Jump"
+
+AimbotButton.Parent = Frame
+AimbotButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+AimbotButton.Position = UDim2.new(0, 10, 0, 110)
+AimbotButton.Size = UDim2.new(0, 480, 0, 40)
+AimbotButton.Text = "Aimbot"
+
+-- ESP Logic
+local ESPEnabled = false
+local espBoxes = {}
+local healthBars = {}
+ESPButton.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    if ESPEnabled then
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local box = Drawing.new("Square")
+                box.Visible = true
+                box.Color = Color3.new(1, 0, 0) -- Red for locked targets
+                box.Thickness = 2
+                espBoxes[player] = box
+
+                local healthBar = Drawing.new("Line")
+                healthBar.Visible = true
+                healthBar.Color = Color3.new(0, 1, 0) -- Green health bar
+                healthBars[player] = healthBar
+            end
+        end
+    else
+        for _, box in pairs(espBoxes) do
+            box:Remove()
+        end
+        for _, healthBar in pairs(healthBars) do
+            healthBar:Remove()
+        end
+        espBoxes = {}
+        healthBars = {}
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if ESPEnabled then
+        for player, box in pairs(espBoxes) do
+            if player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+                if head and rootPart then
+                    local vector, onScreen = workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        box.Visible = true
+                        box.Position = Vector2.new(vector.X - 25, vector.Y - 25)
+                        box.Size = Vector2.new(50, 50)
+
+                        local humanoid = player.Character:FindFirstChild("Humanoid")
+                        if humanoid then
+                            local healthRatio = humanoid.Health / humanoid.MaxHealth
+                            local healthVector = Vector2.new(vector.X - 30, vector.Y + 30)
+                            healthBars[player].Visible = true
+                            healthBars[player].From = healthVector
+                            healthBars[player].To = healthVector - Vector2.new(0, 50 * healthRatio)
+                        end
+                    else
+                        box.Visible = false
+                        healthBars[player].Visible = false
+                    end
+                end
+            else
+                box.Visible = false
+                healthBars[player].Visible = false
+            end
+        end
+    end
+end)
+
+-- Aimbot Logic
+local AimbotEnabled = false
+local lockedPlayer = nil
+AimbotButton.MouseButton1Down:Connect(function()
+    AimbotEnabled = true
+end)
+
+AimbotButton.MouseButton1Up:Connect(function()
+    AimbotEnabled = false
+    lockedPlayer = nil
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if AimbotEnabled then
+        local closestPlayer, closestDist = nil, math.huge
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                local vector, onScreen = workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local mousePos = UIS:GetMouseLocation()
+                    local dist = (Vector2.new(vector.X, vector.Y) - mousePos).Magnitude
+                    if dist < closestDist then
+                        closestDist = dist
+                        closestPlayer = player
+                    end
+                end
+            end
+        end
+        lockedPlayer = closestPlayer
+    end
+
+    if lockedPlayer and lockedPlayer.Character and lockedPlayer.Character:FindFirstChild("Head") then
+        local head = lockedPlayer.Character.Head
+        workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, head.Position)
+    end
+end)
