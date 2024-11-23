@@ -1,0 +1,66 @@
+-- real bad btw
+
+-- Initialize variables
+local flying = false
+local speed = 50
+local uis = game:GetService("UserInputService")
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Fly function
+local function fly()
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+    bodyVelocity.Parent = humanoidRootPart
+
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.CFrame = humanoidRootPart.CFrame
+    bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+    bodyGyro.P = 10000
+    bodyGyro.Parent = humanoidRootPart
+
+    while flying do
+        uis.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                bodyGyro.CFrame = workspace.CurrentCamera.CFrame
+            end
+        end)
+
+        local velocity = Vector3.new(0, 0, 0)
+        if uis:IsKeyDown(Enum.KeyCode.W) then
+            velocity = velocity + (workspace.CurrentCamera.CFrame.LookVector * speed)
+        end
+        if uis:IsKeyDown(Enum.KeyCode.S) then
+            velocity = velocity - (workspace.CurrentCamera.CFrame.LookVector * speed)
+        end
+        if uis:IsKeyDown(Enum.KeyCode.A) then
+            velocity = velocity - (workspace.CurrentCamera.CFrame.RightVector * speed)
+        end
+        if uis:IsKeyDown(Enum.KeyCode.D) then
+            velocity = velocity + (workspace.CurrentCamera.CFrame.RightVector * speed)
+        end
+        bodyVelocity.Velocity = velocity
+
+        wait()
+    end
+
+    bodyVelocity:Destroy()
+    bodyGyro:Destroy()
+end
+
+-- Toggle fly function
+local function toggleFly()
+    flying = not flying
+    if flying then
+        fly()
+    end
+end
+
+-- Input handling
+uis.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.F then
+        toggleFly()
+    end
+end)
